@@ -8,7 +8,7 @@ extern crate alloc;
 use alloc::borrow::Cow;
 use std::convert::TryFrom;
 use std::fmt::Display;
-use syn::Type;
+use syn::{Expr, Type};
 
 use darling::{ast, FromDeriveInput, FromField, FromMeta, FromVariant, ToTokens};
 use proc_macro2::TokenStream;
@@ -61,6 +61,26 @@ impl FromMeta for Id {
             _ => Err(darling::Error::unexpected_lit_type(value)),
         })
         .map_err(|e| e.with_span(value))
+    }
+
+    fn from_expr(expr: &Expr) -> darling::Result<Self> {
+        match *expr {
+
+            Expr::Lit(ref lit) => Self::from_value(&lit.lit),
+
+            Expr::Group(ref group) => {
+                Self::from_expr(&group.expr)
+
+            },
+            Expr::Path(ref path) => {
+                Ok(Id::TokenStream(path.into_token_stream()))
+            }
+
+            _ => Err(darling::Error::unexpected_expr_type(expr)),
+
+        }
+
+            .map_err(|e| e.with_span(expr))
     }
 
     fn from_string(value: &str) -> darling::Result<Self> {
